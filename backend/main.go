@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"strings"
 	"time"
 
@@ -73,11 +72,6 @@ func main() {
 	// 注意：RBACMiddleware 需要在 JWTAuth 之后使用
 	// 在 routes.go 中的 authGroup 已经使用了 JWTAuth
 	_ = rbacService // 避免未使用错误
-
-	// 健康检查
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok", "time": time.Now().Format(time.RFC3339)})
-	})
 
 	// 注册路由
 	routes.RegisterRoutes(r, Cfg, authCtrl, projectCtrl, pipelineCtrl, monitorCtrl, deployCtrl, registryCtrl)
