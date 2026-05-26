@@ -6,6 +6,14 @@ WORKDIR /app
 ENV GOPROXY=https://goproxy.cn,direct
 ENV GOSUMDB=off
 
+# 清除可能从宿主机继承的代理环境变量（宿主机代理在容器内不可达）
+ENV HTTP_PROXY=
+ENV HTTPS_PROXY=
+ENV http_proxy=
+ENV https_proxy=
+ENV ALL_PROXY=
+ENV all_proxy=
+
 COPY go.mod ./
 
 # Alpine 镜像默认没有 git，go mod download 需要 git
