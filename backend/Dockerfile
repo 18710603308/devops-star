@@ -7,6 +7,10 @@ ENV GOPROXY=https://goproxy.cn,direct
 ENV GOSUMDB=off
 
 COPY go.mod ./
+
+# Alpine 镜像默认没有 git，go mod download 需要 git
+RUN apk add --no-cache git
+
 RUN go mod download
 
 # 生成 go.sum（如果宿主机没有提交 go.sum）
