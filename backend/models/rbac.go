@@ -1,6 +1,9 @@
 package models
 
 import (
+	"strings"
+	"time"
+
 	"gorm.io/gorm"
 )
 
@@ -103,12 +106,16 @@ const (
 // HasPermission 检查角色是否有某个权限
 func (r *Role) HasPermission(permissionName string) bool {
 	for _, perm := range r.Permissions {
+		// 精确匹配
 		if perm.Name == permissionName {
 			return true
 		}
-		// 通配符检查（例如 project:* 匹配 project:create）
-		if perm.Name == r.Resource+":*" {
-			return true
+		// 通配符匹配（例如 project:* 匹配 project:create）
+		if strings.HasSuffix(perm.Name, ":*") {
+			resource := strings.TrimSuffix(perm.Name, ":*")
+			if strings.HasPrefix(permissionName, resource+":") {
+				return true
+			}
 		}
 	}
 	return false

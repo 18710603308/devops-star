@@ -61,7 +61,7 @@ loki_data/
 
 # ========== 编译产物 ==========
 /backend/main
-/backend/config/
+# /backend/config/  <= 源码目录，不忽略
 /backend/scripts/
 
 # ========== 文档生成 ==========
