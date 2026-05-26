@@ -38,6 +38,10 @@ request.interceptors.response.use(
       ElMessage.error(res.message || "请求失败");
       return Promise.reject(new Error(res.message || "Error"));
     }
+    // 有 message 字段时展示给用户（如 Harbor 未连接等提示）
+    if (res.message) {
+      ElMessage.warning(res.message);
+    }
     return res;
   },
   (error) => {
