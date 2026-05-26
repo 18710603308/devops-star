@@ -98,8 +98,3 @@ func (c *ProjectController) GetProjectMembers(ctx *gin.Context) {
 func (c *ProjectController) AddProjectMember(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "成员添加成功"})
 }
-
-func parseUint(s string) uint {
-	// 简化版，实际应使用 strconv.ParseUint
-	return 1
-}

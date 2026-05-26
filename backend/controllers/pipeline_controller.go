@@ -103,5 +103,3 @@ func (c *PipelineController) GetPipelineLogs(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, gin.H{"logs": logs})
 }
-
-func parseUint(id uint) uint { return id }
