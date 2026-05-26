@@ -65,12 +65,12 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from "vue";
 import { getPipelineStats, getBuildList } from "@/api/monitor";
-import { Pipeline, Share, Box, Promotion } from "@element-plus/icons-vue";
+import { Connection, Share, Box, Promotion } from "@element-plus/icons-vue";
 import * as echarts from "echarts";
 import type { ECharts } from "echarts";
 
 const statCards = ref([
-  { title: "今日构建", value: 15, trend: "+3", trendUp: true, color: "#409EFF", icon: Pipeline },
+  { title: "今日构建", value: 15, trend: "+3", trendUp: true, color: "#409EFF", icon: Connection },
   { title: "项目总数", value: 8, trend: "+1", trendUp: true, color: "#67C23A", icon: Share },
   { title: "镜像总数", value: 42, trend: "+5", trendUp: true, color: "#E6A23C", icon: Box },
   { title: "部署成功", value: 12, trend: "-1", trendUp: false, color: "#F56C6C", icon: Promotion },
