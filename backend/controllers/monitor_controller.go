@@ -91,9 +91,9 @@ func (c *MonitorController) GetDeployStats(ctx *gin.Context) {
 
 	// 简化：实际应使用 GORM 查询今日数据
 	_ = today // 避免未使用错误
-	totalToday = stats["total"].(int64)
-	successToday = stats["success"].(int64)
-	failedToday = stats["failed"].(int64)
+	totalToday = stats["total"]
+	successToday = stats["success"]
+	failedToday = stats["failed"]
 
 	response := gin.H{
 		"total":        stats["total"],
