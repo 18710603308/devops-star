@@ -86,7 +86,9 @@ setup_docker_mirrors() {
   "registry-mirrors": [
     "https://docker.1ms.run",
     "https://docker.m.daocloud.io",
-    "https://mirror.ccs.tencentyun.com"
+    "https://mirror.ccs.tencentyun.com",
+    "https://hub-mirror.c.163.com",
+    "https://mirror.baidubce.com"
   ],
   "log-driver": "json-file",
   "log-opts": {
@@ -146,7 +148,9 @@ cat > /etc/docker/daemon.json << 'DOCKER_EOF'
   "registry-mirrors": [
     "https://docker.1ms.run",
     "https://docker.m.daocloud.io",
-    "https://mirror.ccs.tencentyun.com"
+    "https://mirror.ccs.tencentyun.com",
+    "https://hub-mirror.c.163.com",
+    "https://mirror.baidubce.com"
   ]
 }
 DOCKER_EOF
@@ -193,7 +197,7 @@ pull_images() {
     "grafana/grafana:latest"
     "grafana/loki:latest"
     "node:20-alpine"
-    "golang:1.22-alpine"
+    "golang:1.23-alpine"
   )
 
   for img in "${images[@]}"; do
