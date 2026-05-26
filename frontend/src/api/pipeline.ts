@@ -20,6 +20,20 @@ export function getPipeline(id: string) {
   return request.get(`/pipelines/${id}`);
 }
 
+// 更新流水线
+export function updatePipeline(id: string, data: {
+  name?: string;
+  description?: string;
+  config_yaml?: string;
+}) {
+  return request.put(`/pipelines/${id}`, data);
+}
+
+// 删除流水线
+export function deletePipeline(id: string) {
+  return request.delete(`/pipelines/${id}`);
+}
+
 // 触发流水线
 export function triggerPipeline(id: string) {
   return request.post(`/pipelines/${id}/trigger`);
