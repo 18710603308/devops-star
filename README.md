@@ -157,6 +157,24 @@ devops-star/
 | PyPI | `pypi.tuna.tsinghua.edu.cn`（清华源） |
 | Go | `goproxy.cn`（七牛云） |
 
+### 本地开发环境配置国内源
+
+**前端（npm）**：项目已包含 `frontend/.npmrc`，无需额外配置，`npm install` 自动走淘宝镜像。
+
+**后端（Go）**：
+```bash
+# 方式一：全局配置（推荐，一次生效）
+go env -w GOPROXY=https://goproxy.cn,direct
+go env -w GOSUMDB=off
+
+# 方式二：项目级（仅当前 shell）
+cd backend
+export GOPROXY=https://goproxy.cn,direct
+go mod tidy && go run main.go
+```
+
+**Docker 构建**：`docker-compose build` 时 Dockerfile 已自动配置国内源，无需额外操作。
+
 ### 通知渠道（国内主流）
 
 - ✅ 企业微信机器人 Webhook

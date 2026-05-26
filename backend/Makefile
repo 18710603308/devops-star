@@ -1,6 +1,9 @@
 .PHONY: all build run clean test tidy lint
 
 # ========== DevOpsStar 后端 Makefile ==========
+# 国内 Go 代理加速（七牛云 goproxy.cn）
+export GOPROXY := https://goproxy.cn,direct
+export GOSUMDB := off
 
 APP_NAME := devops-star
 BUILD_DIR := bin
