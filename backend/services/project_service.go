@@ -3,7 +3,6 @@ package services
 import (
 	"devops-star/backend/config"
 	"devops-star/backend/models"
-	"errors"
 	"fmt"
 
 	"gorm.io/gorm"
