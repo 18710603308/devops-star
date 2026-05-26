@@ -263,7 +263,7 @@ func (s *NotificationConfigService) CreateConfig(name, notifyType, webhook, smtp
 		SMTPPort:  smtpPort,
 		SMTPUser:  smtpUser,
 		SMTPPass:  smtpPass,
-		NotifyOn:  "always",
+		NotifyOn:  []string{"always"},
 		Enabled:   true,
 	}
 

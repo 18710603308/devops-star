@@ -24,15 +24,15 @@ func (s *NotificationService) SendNotification(message string, notifyType string
 	// notifyType: "always", "success", "failed", "wecom", "dingtalk", "feishu", "email"
 	switch notifyType {
 	case "wecom", "always":
-		if s.Cfg.WeComWebhook != "" {
+		if s.Cfg.NotifyWeComWebhook != "" {
 			return s.sendWeCom(message)
 		}
 	case "dingtalk":
-		if s.Cfg.DingTalkWebhook != "" {
+		if s.Cfg.NotifyDingTalkWebhook != "" {
 			return s.sendDingTalk(message)
 		}
 	case "feishu":
-		if s.Cfg.FeishuWebhook != "" {
+		if s.Cfg.NotifyFeishuWebhook != "" {
 			return s.sendFeishu(message)
 		}
 	case "email":
@@ -49,7 +49,7 @@ func (s *NotificationService) SendNotification(message string, notifyType string
 
 // 发送企业微信通知
 func (s *NotificationService) sendWeCom(message string) error {
-	webhook := s.Cfg.WeComWebhook
+	webhook := s.Cfg.NotifyWeComWebhook
 	if webhook == "" {
 		return fmt.Errorf("企业微信 Webhook 未配置")
 	}
@@ -81,7 +81,7 @@ func (s *NotificationService) sendWeCom(message string) error {
 
 // 发送钉钉通知
 func (s *NotificationService) sendDingTalk(message string) error {
-	webhook := s.Cfg.DingTalkWebhook
+	webhook := s.Cfg.NotifyDingTalkWebhook
 	if webhook == "" {
 		return fmt.Errorf("钉钉 Webhook 未配置")
 	}
@@ -113,7 +113,7 @@ func (s *NotificationService) sendDingTalk(message string) error {
 
 // 发送飞书通知
 func (s *NotificationService) sendFeishu(message string) error {
-	webhook := s.Cfg.FeishuWebhook
+	webhook := s.Cfg.NotifyFeishuWebhook
 	if webhook == "" {
 		return fmt.Errorf("飞书 Webhook 未配置")
 	}

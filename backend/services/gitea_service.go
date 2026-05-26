@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"devops-star/backend/config"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
