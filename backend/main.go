@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"devops-star/backend/config"
@@ -51,10 +50,7 @@ func main() {
 	projectService = services.NewProjectService(DB, Cfg, giteaService)
 	pipelineService = services.NewPipelineService(DB, Cfg, giteaService)
 
-	// 初始化服务层（Registry/Harbor）
-	harborService := services.NewHarborService(Cfg)
-
-	// 初始化服务层（RBAC）
+	// 初始化 RBAC 服务
 	rbacService := services.NewRBACService(DB)
 
 	// 初始化控制器层
@@ -64,9 +60,6 @@ func main() {
 	monitorCtrl := controllers.NewMonitorController(pipelineService, deployService, Cfg.PrometheusURL)
 	deployCtrl := controllers.NewDeployController(deployService, notifyService)
 	registryCtrl := controllers.NewRegistryController(harborService)
-
-	// 初始化服务层（RBAC）
-	rbacService := services.NewRBACService(DB)
 
 	// 初始化 Gin
 	r := gin.Default()
