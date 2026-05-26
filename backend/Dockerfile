@@ -6,8 +6,11 @@ WORKDIR /app
 ENV GOPROXY=https://goproxy.cn,direct
 ENV GOSUMDB=off
 
-COPY go.mod go.sum ./
+COPY go.mod ./
 RUN go mod download
+
+# 生成 go.sum（如果宿主机没有提交 go.sum）
+RUN go mod tidy
 
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o main main.go
