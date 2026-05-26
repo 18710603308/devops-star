@@ -1,0 +1,69 @@
+# ========== 依赖 ==========
+node_modules/
+vendor/
+
+# ========== 构建产物 ==========
+frontend/dist/
+frontend/.vite/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# ========== 环境变量 ==========
+.env
+.env.*
+!.env.example
+
+# ========== IDE ==========
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ========== 日志 ==========
+*.log
+logs/
+
+# ========== 数据库 ==========
+*.db
+*.sqlite
+*.sqlite3
+
+# ========== 临时文件 ==========
+tmp/
+temp/
+*.tmp
+*.bak
+*.cache
+
+# ========== 测试覆盖率 ==========
+coverage/
+*.coverprofile
+
+# ========== Docker ==========
+docker-compose.override.yml
+
+# ========== 数据持久化（不提交） ==========
+postgres_data/
+redis_data/
+gitea_data/
+harbor_data/
+prometheus_data/
+grafana_data/
+loki_data/
+
+# ========== 编译产物 ==========
+/backend/main
+/backend/config/
+/backend/scripts/
+
+# ========== 文档生成 ==========
+docs/api/
+.openapi-generator/

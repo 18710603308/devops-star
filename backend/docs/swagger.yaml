@@ -1,0 +1,563 @@
+openapi: 3.0.0
+info:
+  title: DevOpsStar API 文档
+  description: DevOpsStar 平台 RESTful API 文档
+  version: 1.0.0
+  contact:
+    name: DevOpsStar Team
+    url: https://github.com/devops-star/devops-star
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: 本地开发环境
+  - url: https://your-domain.com/api/v1
+    description: 生产环境
+
+paths:
+  /auth/login:
+    post:
+      tags: [认证]
+      summary: 用户登录
+      description: 使用用户名/邮箱和密码登录，返回 JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: 用户名或密码错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/register:
+    post:
+      tags: [认证]
+      summary: 用户注册
+      description: 注册新用户账号
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/me:
+    get:
+      tags: [认证]
+      summary: 获取当前用户信息
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: 未授权
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /projects:
+    get:
+      tags: [项目管理]
+      summary: 获取项目列表
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Project'
+    post:
+      tags: [项目管理]
+      summary: 创建项目
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        '200':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  /projects/{id}:
+    get:
+      tags: [项目管理]
+      summary: 获取项目详情
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '404':
+          description: 项目不存在
+    put:
+      tags: [项目管理]
+      summary: 更新项目
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+      responses:
+        '200':
+          description: 更新成功
+    delete:
+      tags: [项目管理]
+      summary: 删除项目
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 删除成功
+
+  /pipelines:
+    get:
+      tags: [流水线管理]
+      summary: 获取流水线列表
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 获取成功
+    post:
+      tags: [流水线管理]
+      summary: 创建流水线
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePipelineRequest'
+      responses:
+        '200':
+          description: 创建成功
+
+  /pipelines/{id}/trigger:
+    post:
+      tags: [流水线管理]
+      summary: 触发流水线
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 触发成功
+
+  /deploy/environments:
+    get:
+      tags: [部署管理]
+      summary: 获取部署环境列表
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 获取成功
+    post:
+      tags: [部署管理]
+      summary: 创建部署环境
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEnvironmentRequest'
+      responses:
+        '200':
+          description: 创建成功
+
+  /deploy/deploy:
+    post:
+      tags: [部署管理]
+      summary: 触发部署
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TriggerDeployRequest'
+      responses:
+        '200':
+          description: 触发成功
+
+  /deploy/history:
+    get:
+      tags: [部署管理]
+      summary: 获取部署历史
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 获取成功
+
+  /monitor/stats:
+    get:
+      tags: [监控]
+      summary: 获取监控统计
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorStats'
+
+  /health:
+    get:
+      tags: [系统]
+      summary: 健康检查
+      responses:
+        '200':
+          description: 服务正常
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT 认证（在 Authorization header 中传递 token）
+
+  schemas:
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          description: 用户名或邮箱
+          example: admin
+        password:
+          type: string
+          format: password
+          description: 密码
+          example: admin123
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT token
+        user:
+          $ref: '#/components/schemas/User'
+
+    RegisterRequest:
+      type: object
+      required: [username, password, email]
+      properties:
+        username:
+          type: string
+          description: 用户名（3-50字符）
+          minLength: 3
+          maxLength: 50
+          example: johndoe
+        password:
+          type: string
+          format: password
+          description: 密码（至少6字符）
+          minLength: 6
+          example: password123
+        email:
+          type: string
+          format: email
+          description: 邮箱地址
+          example: johndoe@example.com
+
+    RegisterResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: 注册成功
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: admin
+        email:
+          type: string
+          format: email
+          example: admin@example.com
+        created_at:
+          type: string
+          format: date-time
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          description: 仓库名称（小写）
+          example: my-project
+        display_name:
+          type: string
+          description: 显示名称
+          example: 我的项目
+        description:
+          type: string
+          description: 项目描述
+        repo_url:
+          type: string
+          description: 代码仓库地址
+          example: http://localhost:3000/admin/my-project.git
+        repo_type:
+          type: string
+          description: 仓库类型
+          enum: [git, svn, hg]
+          example: git
+        created_by:
+          type: integer
+          description: 创建者用户 ID
+        created_at:
+          type: string
+          format: date-time
+
+    CreateProjectRequest:
+      type: object
+      required: [name, display_name, repo_type, project_id]
+      properties:
+        name:
+          type: string
+          description: 项目名称
+        display_name:
+          type: string
+          description: 显示名称
+        description:
+          type: string
+          description: 项目描述
+        repo_url:
+          type: string
+          description: 仓库地址（可选，自动创建 Gitea 仓库）
+        repo_type:
+          type: string
+          enum: [git, svn, hg]
+        project_id:
+          type: integer
+          description: 所属项目 ID
+
+    UpdateProjectRequest:
+      type: object
+      properties:
+        display_name:
+          type: string
+        description:
+          type: string
+        repo_url:
+          type: string
+
+    CreatePipelineRequest:
+      type: object
+      required: [name, project_id]
+      properties:
+        name:
+          type: string
+          description: 流水线名称
+        project_id:
+          type: integer
+          description: 所属项目 ID
+        description:
+          type: string
+          description: 流水线描述
+        config_yaml:
+          type: string
+          description: 流水线 YAML 配置
+
+    Environment:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          description: 环境名称
+          example: dev
+        display_name:
+          type: string
+          description: 显示名称
+          example: 开发环境
+        deploy_type:
+          type: string
+          enum: [docker, k8s, kubernetes]
+          description: 部署类型
+        project_id:
+          type: integer
+        status:
+          type: string
+          enum: [active, inactive]
+          description: 环境状态
+
+    CreateEnvironmentRequest:
+      type: object
+      required: [name, display_name, deploy_type, project_id]
+      properties:
+        name:
+          type: string
+        display_name:
+          type: string
+        deploy_type:
+          type: string
+          enum: [docker, k8s, kubernetes]
+        project_id:
+          type: integer
+
+    TriggerDeployRequest:
+      type: object
+      required: [environment_id]
+      properties:
+        environment_id:
+          type: integer
+          description: 部署环境 ID
+        pipeline_run_id:
+          type: string
+          description: 流水线运行 ID
+        image_tag:
+          type: string
+          description: 镜像标签
+          example: nginx:v1.0.0
+
+    MonitorStats:
+      type: object
+      properties:
+        total_projects:
+          type: integer
+          description: 总项目数
+        total_pipelines:
+          type: integer
+          description: 总流水线数
+        total_runs:
+          type: integer
+          description: 总运行次数
+        success_runs:
+          type: integer
+          description: 成功运行次数
+        failed_runs:
+          type: integer
+          description: 失败运行次数
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        time:
+          type: object
+          properties:
+            now:
+              type: string
+              format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: 错误信息
+
+tags:
+  - name: 认证
+    description: 用户认证相关接口
+  - name: 项目管理
+    description: 项目 CRUD 接口
+  - name: 流水线管理
+    description: CI/CD 流水线管理接口
+  - name: 部署管理
+    description: 部署环境管理和部署执行接口
+  - name: 监控
+    description: 系统监控和统计接口
+  - name: 系统
+    description: 系统级接口（健康检查等）

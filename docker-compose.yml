@@ -1,0 +1,301 @@
+# DevOpsStar - 开箱即用 DevOps 平台
+# 使用说明：
+#   1. cp .env.example .env && vi .env
+#   2. chmod +x init.sh && ./init.sh
+#   3. 访问 http://localhost
+
+version: "3.8"
+
+services:
+  # ========== 数据库 ==========
+  postgres:
+    image: postgres:16-alpine
+    container_name: devops-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-devops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devops123}
+      POSTGRES_DB: ${POSTGRES_DB:-devops_star}
+      TZ: Asia/Shanghai
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - devops-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-devops}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========== 缓存 ==========
+  redis:
+    image: redis:7-alpine
+    container_name: devops-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-devops123} --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - devops-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-devops123}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ========== Gitea (代码仓库 + CI/CD) ==========
+  gitea:
+    image: gitea/gitea:1.22
+    container_name: devops-gitea
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      USER_UID: 1000
+      USER_GID: 1000
+      GITEA__database__DB_TYPE: postgres
+      GITEA__database__HOST: postgres:5432
+      GITEA__database__NAME: ${POSTGRES_DB:-devops_star}
+      GITEA__database__USER: ${POSTGRES_USER:-devops}
+      GITEA__database__PASSWD: ${POSTGRES_PASSWORD:-devops123}
+      GITEA__server__DOMAIN: ${DOMAIN:-localhost}
+      GITEA__server__ROOT_URL: http://${DOMAIN:-localhost}:${GITEA_PORT:-3000}/
+      GITEA__server__SSH_DOMAIN: ${DOMAIN:-localhost}
+      GITEA__server__HTTP_PORT: 3000
+      GITEA__server__SSH_PORT: ${GITEA_SSH_PORT:-2222}
+      GITEA__security__SECRET_KEY: ${JWT_SECRET:-devops-star-secret}
+      GITEA__service__DISABLE_REGISTRATION: "false"
+      GITEA__service__DEFAULT_KEEP_EMAIL_PRIVATE: "false"
+    ports:
+      - "${GITEA_PORT:-3000}:3000"
+      - "${GITEA_SSH_PORT:-2222}:22"
+    volumes:
+      - ./gitea/data:/data
+      - ./gitea/custom:/custom
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - devops-net
+
+  # ========== Harbor (镜像仓库，可选) ==========
+  # 取消注释以启用 Harbor（资源占用较高）
+  # 或使用轻量版 Docker Registry（见下方 registry 服务）
+  harbor-core:
+    image: goharbor/harbor-core:v2.11
+    container_name: devops-harbor-core
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      CORE_SECRET: ${JWT_SECRET:-devops-star-secret}
+      DATABASE_TYPE: postgres
+      POSTGRESQL_HOST: postgres
+      POSTGRESQL_PORT: 5432
+      POSTGRESQL_USER: ${POSTGRES_USER:-devops}
+      POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD:-devops123}
+      POSTGRESQL_DATABASE: harbor_core
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-devops123}
+      HARBOR_ADMIN_PASSWORD: ${HARBOR_ADMIN_PASSWORD:-Harbor12345}
+    ports:
+      - "${HARBOR_PORT:-8081}:8080"
+    volumes:
+      - ./harbor/data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - devops-net
+    profiles:
+      - harbor
+
+  # ========== 轻量 Docker Registry（默认启用） ==========
+  registry:
+    image: registry:2.8
+    container_name: devops-registry
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry_data:/var/lib/registry
+      - ./harbor/auth:/auth
+    networks:
+      - devops-net
+
+  # ========== 后端 API (Go + Gin) ==========
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: devops-backend
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      GIN_MODE: ${GIN_MODE:-debug}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-devops}
+      DB_PASS: ${POSTGRES_PASSWORD:-devops123}
+      DB_NAME: ${POSTGRES_DB:-devops_star}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASS: ${REDIS_PASSWORD:-devops123}
+      JWT_SECRET: ${JWT_SECRET:-devops-star-jwt-secret-change-in-production}
+      GITEA_URL: http://gitea:3000
+      GITEA_ADMIN_USER: ${GITEA_ADMIN_USER:-admin}
+      GITEA_ADMIN_PASSWORD: ${GITEA_ADMIN_PASSWORD:-admin123}
+      NOTIFY_WECOM_WEBHOOK: ${WECOM_WEBHOOK:-}
+      NOTIFY_DINGTALK_WEBHOOK: ${DINGTALK_WEBHOOK:-}
+      NOTIFY_FEISHU_WEBHOOK: ${FEISHU_WEBHOOK:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      gitea:
+        condition: service_started
+    networks:
+      - devops-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ========== 前端 (Vue 3 + Nginx) ==========
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://${DOMAIN:-localhost}:${BACKEND_PORT:-8080}
+    container_name: devops-frontend
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - devops-net
+
+  # ========== Nginx 反向代理（可选，frontend 已含 Nginx） ==========
+  nginx:
+    image: nginx:alpine
+    container_name: devops-nginx
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+      - gitea
+    networks:
+      - devops-net
+    profiles:
+      - proxy
+
+  # ========== Prometheus (监控) ==========
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: devops-prometheus
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--storage.tsdb.retention.time=30d"
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - devops-net
+
+  # ========== Grafana (可视化) ==========
+  grafana:
+    image: grafana/grafana:latest
+    container_name: devops-grafana
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin123}
+      GF_SERVER_ROOT_URL: http://${DOMAIN:-localhost}:${GRAFANA_PORT:-3001}
+      GF_DATABASE_TYPE: postgres
+      GF_DATABASE_HOST: postgres:5432
+      GF_DATABASE_NAME: ${POSTGRES_DB:-devops_star}
+      GF_DATABASE_USER: ${POSTGRES_USER:-devops}
+      GF_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-devops123}
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - ./monitoring/grafana:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      postgres:
+        condition: service_healthy
+      prometheus:
+        condition: service_started
+    networks:
+      - devops-net
+
+  # ========== Loki (日志聚合) ==========
+  loki:
+    image: grafana/loki:latest
+    container_name: devops-loki
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+    volumes:
+      - ./monitoring/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    networks:
+      - devops-net
+
+volumes:
+  postgres_data:
+  redis_data:
+  registry_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+
+networks:
+  devops-net:
+    driver: bridge

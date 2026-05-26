@@ -1,0 +1,57 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "alert.rules.yml"
+
+scrape_configs:
+  # ========== DevOpsStar 后端 API ==========
+  - job_name: "devops-star-backend"
+    static_configs:
+      - targets: ["backend:8080"]
+    metrics_path: /metrics
+    scrape_interval: 10s
+
+  # ========== 前端（Nginx 暴露指标） ==========
+  - job_name: "devops-star-frontend"
+    static_configs:
+      - targets: ["frontend:80"]
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # ========== Gitea ==========
+  - job_name: "gitea"
+    static_configs:
+      - targets: ["gitea:3000"]
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # ========== PostgreSQL Exporter（可选） ==========
+  # - job_name: "postgres"
+  #   static_configs:
+  #     - targets: ["postgres_exporter:9187"]
+
+  # ========== Redis Exporter（可选） ==========
+  # - job_name: "redis"
+  #   static_configs:
+  #     - targets: ["redis_exporter:9121"]
+
+  # ========== Docker 主机指标（Node Exporter） ==========
+  - job_name: "node"
+    static_configs:
+      - targets: ["node_exporter:9100"]
+    scrape_interval: 15s
+
+  # ========== Docker 容器指标（cAdvisor） ==========
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["cadvisor:8080"]
+    scrape_interval: 15s
+
+  # ========== 自建 Registry ==========
+  - job_name: "docker-registry"
+    static_configs:
+      - targets: ["registry:5000"]
+    metrics_path: /metrics
+    scrape_interval: 30s

@@ -1,0 +1,228 @@
+# ========== DevOpsStar 示例流水线 ==========
+# 将此文件放在 Gitea 仓库的 .gitea/workflows/ci.yml 或 .github/workflows/ci.yml
+# Gitea Actions 兼容 GitHub Actions 语法
+
+name: DevOpsStar CI/CD 示例
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  # 阶段1：拉取代码
+  checkout:
+    name: 拉取代码
+    runs-on: docker
+    container:
+      image: alpine/git:latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 查看代码
+        run: |
+          echo "📦 代码检出完成"
+          ls -la
+          git --version
+
+  # 阶段2：构建项目
+  build:
+    name: 构建项目
+    needs: checkout
+    runs-on: docker
+    container:
+      image: node:20-alpine
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: 安装依赖
+        run: |
+          echo "📦 安装依赖..."
+          npm ci --registry=https://registry.npmmirror.com
+          echo "✅ 依赖安装完成"
+
+      - name: 执行构建
+        run: |
+          echo "🔧 开始构建..."
+          npm run build
+          echo "✅ 构建完成"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: dist/
+          retention-days: 7
+
+  # 阶段3：运行测试
+  test:
+    name: 运行测试
+    needs: build
+    runs-on: docker
+    container:
+      image: node:20-alpine
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 安装依赖
+        run: npm ci --registry=https://registry.npmmirror.com
+
+      - name: 运行单元测试
+        run: |
+          echo "🧪 运行测试..."
+          npm test
+          echo "✅ 测试完成"
+
+      - name: 上传测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: coverage/
+          retention-days: 7
+
+  # 阶段4：代码质量检查
+  lint:
+    name: 代码检查
+    runs-on: docker
+    container:
+      image: node:20-alpine
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 运行 ESLint
+        run: |
+          echo "🔍 运行代码检查..."
+          npm ci --registry=https://registry.npmmirror.com
+          npm run lint
+          echo "✅ 代码检查完成"
+
+  # 阶段5：构建 Docker 镜像
+  docker-build:
+    name: 构建 Docker 镜像
+    needs: [build, test]
+    runs-on: docker
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 登录 Docker 镜像仓库
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.DOCKER_REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: 构建并推送镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_REGISTRY }}/myapp:latest
+            ${{ secrets.DOCKER_REGISTRY }}/myapp:${{ github.sha }}
+
+      - name: 镜像安全扫描
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ secrets.DOCKER_REGISTRY }}/myapp:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: 上传扫描结果
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # 阶段6：部署到环境
+  deploy-dev:
+    name: 部署到开发环境
+    needs: docker-build
+    runs-on: docker
+    environment:
+      name: development
+      url: https://dev.example.com
+    steps:
+      - name: 部署到开发环境
+        run: |
+          echo "🚀 部署到开发环境..."
+          echo "镜像：myapp:${{ github.sha }}"
+          # 实际部署命令：
+          # - kubectl set image deployment/myapp myapp=myapp:${{ github.sha }}
+          # - kubectl rollout status deployment/myapp
+          echo "✅ 部署完成"
+
+      - name: 健康检查
+        run: |
+          echo "🩺 执行健康检查..."
+          sleep 10
+          curl -f https://dev.example.com/health || exit 1
+          echo "✅ 健康检查通过"
+
+  # 阶段7：通知
+  notify:
+    name: 发送通知
+    needs: [deploy-dev]
+    runs-on: docker
+    if: always()
+    steps:
+      - name: 企业微信通知
+        if: ${{ secrets.WECOM_WEBHOOK != '' }}
+        uses: 8398a7/action-slack-notification@v3
+        with:
+          webhook_url: ${{ secrets.WECOM_WEBHOOK }}
+          status: ${{ job.status }}
+
+      - name: 钉钉通知
+        if: ${{ secrets.DINGTALK_WEBHOOK != '' }}
+        uses: 8398a7/action-slack-notification@v3
+        with:
+          webhook_url: ${{ secrets.DINGTALK_WEBHOOK }}
+          status: ${{ job.status }}
+
+      - name: 飞书通知
+        if: ${{ secrets.FEISHU_WEBHOOK != '' }}
+        uses: 8398a7/action-slack-notification@v3
+        with:
+          webhook_url: ${{ secrets.FEISHU_WEBHOOK }}
+          status: ${{ job.status }}
+
+# ========== 环境变量配置 ==========
+# 在 Gitea 仓库设置 → Secrets 中配置：
+#
+# DOCKER_REGISTRY     Docker 镜像仓库地址（如 docker.io/username）
+# DOCKER_USERNAME    Docker 用户名
+# DOCKER_PASSWORD    Docker 密码
+# WECOM_WEBHOOK      企业微信机器人 Webhook URL
+# DINGTALK_WEBHOOK   钉钉机器人 Webhook URL
+# FEISHU_WEBHOOK     飞书机器人 Webhook URL
+#
+# ========== 使用说明 ==========
+# 1. 将此文件提交到 Gitea 仓库的 .gitea/workflows/ci.yml
+# 2. 推送代码到 main/master 分支，自动触发流水线
+# 3. 或在 Gitea UI 中手动触发（Actions → 选择流水线 → Run workflow）
+# 4. 查看运行日志和结果
+#
+# 更多示例：https://gitea.com/actions/example-workflows
