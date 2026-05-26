@@ -20,7 +20,11 @@ func NewRegistryController(harborService *services.HarborService) *RegistryContr
 func (c *RegistryController) GetImages(ctx *gin.Context) {
 	repos, err := c.harborService.ListRepositories("")
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// Harbor 未启动或连接失败，返回空列表和提示
+		ctx.JSON(http.StatusOK, gin.H{
+			"data":    []interface{}{},
+			"message": "Harbor 镜像仓库未连接，请启动 harbor-core 服务",
+		})
 		return
 	}
 
@@ -37,7 +41,10 @@ func (c *RegistryController) GetTags(ctx *gin.Context) {
 
 	tags, err := c.harborService.ListTags("", repoName)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusOK, gin.H{
+			"data":    []interface{}{},
+			"message": "Harbor 镜像仓库未连接",
+		})
 		return
 	}
 
@@ -54,10 +61,9 @@ func (c *RegistryController) DeleteImage(ctx *gin.Context) {
 		return
 	}
 
-	// 使用 tag 作为 reference
 	err := c.harborService.DeleteArtifact("", repoName, tag)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusServiceUnavailable, gin.H{"error": "Harbor 未连接: " + err.Error()})
 		return
 	}
 
@@ -76,7 +82,7 @@ func (c *RegistryController) ScanImage(ctx *gin.Context) {
 
 	err := c.harborService.ScanArtifact("", repoName, tag)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusServiceUnavailable, gin.H{"error": "Harbor 未连接: " + err.Error()})
 		return
 	}
 
@@ -95,7 +101,7 @@ func (c *RegistryController) GetScanReport(ctx *gin.Context) {
 
 	report, err := c.harborService.GetScanReport("", repoName, tag)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusServiceUnavailable, gin.H{"error": "Harbor 未连接: " + err.Error()})
 		return
 	}
 
