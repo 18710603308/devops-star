@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"devops-star/backend/config"
@@ -119,6 +120,7 @@ func initDB() {
 
 // 自动迁移数据模型
 func autoMigrate() {
+	// 先尝试自动迁移，忽略 "constraint does not exist" 错误
 	err := DB.AutoMigrate(
 		&models.User{},
 		&models.Project{},
@@ -132,8 +134,14 @@ func autoMigrate() {
 		&models.Permission{},
 		&models.UserRole{},
 	)
+
+	// 忽略 PostgreSQL "constraint does not exist" 错误（GORM AutoMigrate 已知问题）
 	if err != nil {
-		log.Fatalf("数据模型迁移失败: %v", err)
+		errStr := err.Error()
+		if !strings.Contains(errStr, "does not exist") && !strings.Contains(errStr, "42704") {
+			log.Fatalf("数据模型迁移失败: %v", err)
+		}
+		log.Printf("⚠️ 迁移警告（已忽略）: %v", err)
 	}
 	log.Println("✅ 数据模型迁移完成")
 
