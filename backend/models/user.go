@@ -73,6 +73,7 @@ type Environment struct {
 	ProjectID   uint           `json:"project_id"`
 	DeployType  string         `gorm:"size:20;default:'docker'" json:"deploy_type"` // docker, k8s
 	Config      string         `gorm:"type:text" json:"config"`
+	Status      string         `gorm:"size:20;default:'active'" json:"status"` // active, inactive
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
@@ -80,17 +81,21 @@ type Environment struct {
 
 // DeployRecord 部署记录
 type DeployRecord struct {
-	ID           uint           `gorm:"primaryKey" json:"id"`
-	EnvironmentID uint           `json:"environment_id"`
-	PipelineRunID string         `json:"pipeline_run_id,omitempty"`
-	Status        string         `gorm:"size:20" json:"status"` // pending, running, success, failed, rolled_back
-	DeployURL     string         `gorm:"size:255" json:"deploy_url,omitempty"`
-	ImageTag      string         `gorm:"size:100" json:"image_tag,omitempty"`
-	Logs          string         `gorm:"type:text" json:"logs,omitempty"`
-	DeployedBy    uint           `json:"deployed_by"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
-	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
+	ID            uint           `gorm:"primaryKey" json:"id"`
+	EnvironmentID  uint           `json:"environment_id"`
+	PipelineRunID  string         `json:"pipeline_run_id,omitempty"`
+	Status         string         `gorm:"size:20" json:"status"`    // pending, running, success, failed, rolled_back
+	DeployURL      string         `gorm:"size:255" json:"deploy_url,omitempty"`
+	ImageTag       string         `gorm:"size:100" json:"image_tag,omitempty"`
+	Logs           string         `gorm:"type:text" json:"logs,omitempty"`
+	StartedAt     *time.Time     `json:"started_at,omitempty"`
+	FinishedAt    *time.Time     `json:"finished_at,omitempty"`
+	ErrorMessage   string         `gorm:"type:text" json:"error_message,omitempty"`
+	ContainerID    string         `gorm:"size:100" json:"container_id,omitempty"`
+	DeployedBy     uint           `json:"deployed_by"`
+	CreatedAt      time.Time      `json:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at"`
+	DeletedAt      gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 // NotificationConfig 通知配置

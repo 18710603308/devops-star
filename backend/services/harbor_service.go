@@ -20,7 +20,7 @@ type HarborService struct {
 }
 
 // NewHarborService 创建 Harbor 客户端
-func NewHarborService(cfg *Config) *HarborService {
+func NewHarborService(cfg *config.Config) *HarborService {
 	return &HarborService{
 		Client: &http.Client{
 			Timeout: 30 * time.Second,

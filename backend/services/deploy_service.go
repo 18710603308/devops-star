@@ -190,7 +190,7 @@ func (s *DeployService) deployKubernetes(env *models.Environment, imageTag strin
 
 	// 1. 检查 deployment 是否存在
 	cmd := exec.Command("kubectl", "get", "deployment", deploymentName, "-n", namespace, "-o", "json")
-	output, err := cmd.CombinedOutput()
+	_, err := cmd.CombinedOutput()
 
 	if err != nil {
 		// Deployment 不存在，创建新的
