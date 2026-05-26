@@ -14,16 +14,17 @@ ENV https_proxy=
 ENV ALL_PROXY=
 ENV all_proxy=
 
-COPY go.mod ./
+# 先复制所有源文件（包括 go.mod、go.sum 如果本地有）
+COPY . .
 
-# Alpine 镜像默认没有 git，go mod download 需要 git
+# Alpine 镜像默认没有 git，go mod tidy/download 需要 git
 RUN apk add --no-cache git
 
-# 先 go mod tidy 生成 go.sum（清理无效依赖），再下载
-RUN go mod tidy
-RUN go mod download
+# go mod tidy 自动清理无效依赖并生成/更新 go.sum
+# go mod download 预下载依赖加速后续构建
+RUN go mod tidy && go mod download
 
-COPY . .
+# 构建二进制（CGO_ENABLED=0 禁用 CGO，生成纯静态二进制）
 RUN CGO_ENABLED=0 GOOS=linux go build -o main main.go
 
 # ========== 生产阶段 ==========
