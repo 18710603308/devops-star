@@ -284,7 +284,7 @@ func (s *HarborService) DeleteProject(projectName string) error {
 
 // doRequest 执行 HTTP 请求（带基本认证）
 func (s *HarborService) doRequest(method, url string, body *bytes.Buffer) (*http.Response, error) {
-	var reqBody *bytes.Buffer
+	var reqBody io.Reader
 	if body != nil {
 		reqBody = body
 	}
