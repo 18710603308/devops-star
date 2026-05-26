@@ -272,7 +272,7 @@ services:
 
   # ========== Loki (日志聚合) ==========
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:2.9.2
     container_name: devops-loki
     restart: unless-stopped
     environment:
