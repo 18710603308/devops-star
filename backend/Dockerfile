@@ -19,10 +19,9 @@ COPY go.mod ./
 # Alpine 镜像默认没有 git，go mod download 需要 git
 RUN apk add --no-cache git
 
-RUN go mod download
-
-# 生成 go.sum（如果宿主机没有提交 go.sum）
+# 先 go mod tidy 生成 go.sum（清理无效依赖），再下载
 RUN go mod tidy
+RUN go mod download
 
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o main main.go
