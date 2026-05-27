@@ -53,7 +53,9 @@ docker-compose.override.yml
 # ========== 数据持久化（不提交） ==========
 postgres_data/
 redis_data/
+gitea/data/
 gitea_data/
+harbor/
 harbor_data/
 prometheus_data/
 grafana_data/
