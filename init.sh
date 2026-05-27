@@ -2,6 +2,7 @@
 # DevOpsStar 一键初始化脚本
 # 支持：macOS / Linux / Windows (Git Bash)
 # 功能：配置国内镜像加速、拉取镜像、初始化数据库、启动所有服务
+# 用法：chmod +x init.sh && ./init.sh
 
 set -e
 
@@ -186,7 +187,7 @@ pull_images() {
     source .env
   fi
 
-  # 拉取核心镜像
+  # 核心镜像（始终拉取）
   local images=(
     "postgres:16-alpine"
     "redis:7-alpine"
@@ -195,7 +196,7 @@ pull_images() {
     "nginx:alpine"
     "prom/prometheus:latest"
     "grafana/grafana:latest"
-    "grafana/loki:latest"
+    "grafana/loki:2.9.2"
     "node:20-alpine"
     "golang:1.23-alpine"
   )
@@ -205,7 +206,80 @@ pull_images() {
     docker pull "$img" || warn "拉取 $img 失败，请检查网络"
   done
 
+  # Harbor 镜像（可选，通过环境变量控制）
+  if [[ "${INSTALL_HARBOR:-false}" == "true" ]]; then
+    info "Harbor 已启用，拉取 Harbor 镜像..."
+    local harbor_images=(
+      "goharbor/harbor-core:v2.11.0"
+      "goharbor/harbor-portal:v2.11.0"
+      "goharbor/harbor-jobservice:v2.11.0"
+      "goharbor/registry-photon:v2.11.0"
+      "goharbor/harbor-registryctl:v2.11.0"
+      "goharbor/nginx-photon:v2.11.0"
+      "goharbor/harbor-db:v2.11.0"
+      "goharbor/harbor-redis:v2.11.0"
+      "goharbor/trivy-adapter-photon:v2.11.0"
+    )
+    for img in "${harbor_images[@]}"; do
+      info "拉取 Harbor 镜像: $img"
+      docker pull "$img" || warn "拉取 $img 失败"
+    done
+  else
+    info "Harbor 未启用（设置 INSTALL_HARBOR=true 启用），跳过 Harbor 镜像拉取"
+  fi
+
   ok "镜像拉取完成"
+}
+
+# ========== 初始化 Harbor（多容器） ==========
+setup_harbor() {
+  if [[ "${INSTALL_HARBOR:-false}" != "true" ]]; then
+    info "Harbor 未启用，跳过 Harbor 初始化"
+    return 0
+  fi
+
+  info "初始化 Harbor 多容器编排..."
+
+  # 检查 Harbor 离线安装包是否已下载
+  local harbor_version="v2.11.0"
+  local harbor_pkg="harbor-offline-installer-${harbor_version}.tgz"
+  local harbor_dir="harbor"
+
+  if [ ! -d "$harbor_dir" ]; then
+    info "下载 Harbor 离线安装包（约 1GB，请耐心等待）..."
+    if [ ! -f "$harbor_pkg" ]; then
+      warn "Harbor 离线包较大，推荐使用在线镜像方式。"
+      warn "如需离线安装，请手动下载："
+      warn "  https://github.com/goharbor/harbor/releases/download/${harbor_version}/harbor-offline-installer-${harbor_version}.tgz"
+      warn "然后重新运行此脚本。"
+      info "改用在线镜像方式（已在上一步拉取）..."
+    else
+      info "解压 Harbor 安装包..."
+      tar -xzf "$harbor_pkg"
+    fi
+  fi
+
+  if [ -d "$harbor_dir" ]; then
+    info "配置 Harbor（使用自带数据库）..."
+    cd "$harbor_dir"
+
+    # 复制配置模板
+    if [ ! -f harbor.yml ]; then
+      cp harbor.yml.tmpl harbor.yml
+    fi
+
+    # 修改配置（使用自带 postgres + redis）
+    # 注意：这里使用默认值，生产环境请修改 harbor.yml
+    info "Harbor 配置完成（使用自带数据库）。"
+    info "如需自定义，请编辑 ${harbor_dir}/harbor.yml"
+
+    cd ..
+  else
+    warn "Harbor 目录不存在，将使用 docker-compose 中的 harbor-core 单容器模式"
+    warn "注意：单容器模式功能受限，建议使用完整 Harbor。"
+  fi
+
+  ok "Harbor 初始化完成"
 }
 
 # ========== 初始化数据库 ==========
@@ -229,6 +303,15 @@ init_database() {
     exit 1
   fi
 
+  # 如果 Harbor 启用，创建 harbor_core 数据库
+  if [[ "${INSTALL_HARBOR:-false}" == "true" ]]; then
+    info "为 Harbor 创建数据库..."
+    docker exec -i devops-postgres psql -U ${POSTGRES_USER:-devops} <<-EOF
+CREATE DATABASE harbor_core;
+EOF
+    ok "Harbor 数据库已创建"
+  fi
+
   ok "数据库初始化完成"
 }
 
@@ -241,7 +324,14 @@ start_services() {
     source .env
   fi
 
-  docker-compose up -d
+  # 根据 INSTALL_HARBOR 决定是否启动 Harbor
+  if [[ "${INSTALL_HARBOR:-false}" == "true" ]]; then
+    info "启动服务（包含 Harbor）..."
+    docker-compose --profile harbor up -d
+  else
+    info "启动服务（不含 Harbor）..."
+    docker-compose up -d
+  fi
 
   ok "所有服务已启动！"
 }
@@ -265,7 +355,11 @@ print_info() {
   echo -e "  前端平台:   ${GREEN}http://${domain}:${FRONTEND_PORT:-80}${NC}"
   echo -e "  后端 API:   ${GREEN}http://${domain}:${BACKEND_PORT:-8080}${NC}"
   echo -e "  Gitea:      ${GREEN}http://${domain}:${GITEA_PORT:-3000}${NC}"
-  echo -e "  Harbor:      ${GREEN}http://${domain}:${HARBOR_PORT:-8081}${NC} (需取消 docker-compose.yml 中 harbor 服务的注释)"
+  if [[ "${INSTALL_HARBOR:-false}" == "true" ]]; then
+    echo -e "  Harbor:      ${GREEN}http://${domain}:${HARBOR_PORT:-8081}${NC}"
+  else
+    echo -e "  Harbor:      ${YELLOW}（未启用，设置 INSTALL_HARBOR=true 启用）${NC}"
+  fi
   echo -e "  Grafana:    ${GREEN}http://${domain}:${GRAFANA_PORT:-3001}${NC}"
   echo -e "  Prometheus:  ${GREEN}http://${domain}:${PROMETHEUS_PORT:-9090}${NC}"
   echo ""
@@ -273,7 +367,9 @@ print_info() {
   echo -e "${BLUE}默认账号密码：${NC}"
   echo -e "  Gitea 管理员:   ${YELLOW}${GITEA_ADMIN_USER:-admin} / ${GITEA_ADMIN_PASSWORD:-admin123}${NC}"
   echo -e "  Grafana 管理员: ${YELLOW}admin / ${GRAFANA_ADMIN_PASSWORD:-admin123}${NC}"
-  echo -e "  Harbor 管理员:  ${YELLOW}admin / ${HARBOR_ADMIN_PASSWORD:-Harbor12345}${NC} (若启用)"
+  if [[ "${INSTALL_HARBOR:-false}" == "true" ]]; then
+    echo -e "  Harbor 管理员:  ${YELLOW}admin / ${HARBOR_ADMIN_PASSWORD:-Harbor12345}${NC}"
+  fi
   echo ""
 
   echo -e "${BLUE}快速命令：${NC}"
@@ -287,6 +383,9 @@ print_info() {
   echo -e "  1. 访问前端平台完成初始化配置"
   echo -e "  2. 在 Gitea 中创建代码仓库"
   echo -e "  3. 配置流水线实现 CI/CD"
+  if [[ "${INSTALL_HARBOR:-false}" == "true" ]]; then
+    echo -e "  4. 访问 Harbor 推送 Docker 镜像"
+  fi
   echo ""
 }
 
@@ -303,6 +402,7 @@ main() {
   setup_package_mirrors
   setup_env
   pull_images
+  setup_harbor
 
   info "启动服务..."
   start_services
